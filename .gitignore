@@ -1,0 +1,17 @@
+# Ignore Node.js dependencies (installed by npm install, not committed to git)
+node_modules/
+
+# Ignore environment variable files (they may contain secrets like DB passwords)
+.env*
+!.env.example
+
+# Ignore build output
+dist/
+build/
+
+# macOS system files
+.DS_Store
+
+# IDE settings
+.vscode/
+.idea/

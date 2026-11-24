@@ -1,0 +1,59 @@
+# ============================================================
+# deploy.yml — GitHub Actions CI/CD Pipeline
+# ------------------------------------------------------------
+# Triggers : every push to the "main" branch
+# What it does: SSHs into the EC2 server and re-deploys the app
+# ============================================================
+
+name: Deploy to AWS EC2
+
+# Run this workflow whenever code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH & Deploy
+    runs-on: ubuntu-latest   # GitHub provides this free Linux runner
+
+    steps:
+      # Step 1: Show which commit triggered this deploy (useful for logs)
+      - name: Print commit info
+        run: echo "Deploying commit ${{ github.sha }} pushed by ${{ github.actor }}"
+
+      # Step 2: SSH into the EC2 server and run all deploy commands
+      # We use the popular "appleboy/ssh-action" to handle the SSH connection.
+      # All secrets come from GitHub → Settings → Secrets → Actions
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}       # your server's public IP
+          username: ${{ secrets.EC2_USER }}   # usually "ubuntu" for Ubuntu AMI
+          key: ${{ secrets.EC2_KEY }}         # full contents of your .pem file
+          script: |
+            echo "🚀 Starting deployment..."
+
+            # Move into the cloned project directory
+            cd ${{ secrets.EC2_REPO_PATH }}/expense-tracker
+
+            # Pull the latest code from the main branch
+            git pull origin main
+
+            # ── Backend ──────────────────────────────────────
+            echo "📦 Installing server dependencies..."
+            cd server
+            npm install --production
+
+            # ── Frontend ─────────────────────────────────────
+            echo "🏗️  Building React frontend..."
+            cd ../client
+            npm install
+            npm run build
+
+            # ── Restart the Node server via PM2 ──────────────
+            echo "♻️  Restarting backend..."
+            pm2 restart expense-api
+
+            echo "✅ Deployment complete! Site is live."
